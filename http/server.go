@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/monmohan/csx/zippy"
+	"github.com/monmohan/zippy"
 )
 
 func allowMethods(method string, handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
