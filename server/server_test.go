@@ -29,10 +29,14 @@ func TestZipCreation(t *testing.T) {
 }
 
 func TestZipCreationViaHttp(t *testing.T) {
-	urls := []zippy.DownloadEntry{{"http://example.com", zippy.HTTP, "exmaple.com"},
+	urls := []zippy.DownloadEntry{
+		{"http://example.com", zippy.HTTP, "exmaple.com"},
 		{"https://github.com", zippy.HTTP, "github.com"},
-		{"https://www.reddit.com/r/starterpacks/comments/hidqze/affluent_suburbanite_rambo_starterpack/", zippy.HTTP, "redditimage"}}
-	dlReq := DownloadAsZipRequest{Entries: urls, ZipName: "TestZipCreationViaHttp.zip"}
+		{"https://www.reddit.com/r/starterpacks/comments/hidqze/affluent_suburbanite_rambo_starterpack/", zippy.HTTP, "redditimage"},
+		{"com.github.monmohan.zippy/TestFolder/reddot.png", zippy.S3, "reddot.png"},
+		{"com.github.monmohan.zippy/devnull.jpg", zippy.S3, "devnull.jpg"},
+	}
+	dlReq := DownloadAsZipRequest{Entries: urls, ZipName: "TestZipCreationMixed.zip"}
 	b, _ := json.Marshal(dlReq)
 	fmt.Printf("Request sending %v \n", string(b))
 	f, err := os.Create("/Users/singhmo/Downloads/testh.zip")

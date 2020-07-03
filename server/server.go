@@ -11,6 +11,7 @@ import (
 
 	"github.com/monmohan/zippy"
 	zhttp "github.com/monmohan/zippy/http"
+	"github.com/monmohan/zippy/s3"
 )
 
 //DownloadAsZipRequest is request body for downloading a set of URLs
@@ -53,9 +54,13 @@ func downloadZip(w http.ResponseWriter, r *http.Request) {
 func Zip(urls []zippy.DownloadEntry, writeTo io.Writer) error {
 
 	zipQ := make(chan zippy.FetchedStream)
-
+	var fetchFn zippy.Fetcher
 	for _, url := range urls {
-		go zippy.FetchURL(url, zipQ, zhttp.Fetch)
+		fetchFn = zhttp.Fetch
+		if url.UrlType == zippy.S3 {
+			fetchFn = s3.CreateFetcher()
+		}
+		go zippy.FetchURL(url, zipQ, fetchFn)
 	}
 	zipWriter := zip.NewWriter(writeTo)
 	for range urls {

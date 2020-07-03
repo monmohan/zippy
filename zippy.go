@@ -47,6 +47,7 @@ func AddToZip(zip *zip.Writer, zipQ chan FetchedStream) error {
 		return err
 	}
 	fmt.Printf("Adding stream entry to zip %s\n", fetched.Name)
+	defer fetched.Stream.Close()
 	io.Copy(urlEntry, fetched.Stream)
 	return nil
 }
