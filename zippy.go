@@ -4,77 +4,54 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
-	"net/http"
 )
 
+//DownloadURLType S3 or HTTP
 type DownloadURLType int
 
 const (
+	//HTTP Urls that can downloaded with simple HTTP Get
 	HTTP DownloadURLType = iota
+	//S3 Object URLs
 	S3
 )
 
 type DownloadEntry struct {
 	Url     string
-	urlType DownloadURLType
+	UrlType DownloadURLType
 	Name    string
 }
-type DownloadAsZipRequest struct {
-	Entries []DownloadEntry
-	ZipName string
+
+type FetchedStream struct {
+	Stream io.ReadCloser
+	Err    error
+	Name   string
 }
 
-type fetchedstream struct {
-	stream io.ReadCloser
-	err    error
-	name   string
+type Fetcher func(entry DownloadEntry) FetchedStream
+
+//FetchURL fetch a given URL using the fetcher func
+func FetchURL(entry DownloadEntry, zipQ chan FetchedStream, fetcher Fetcher) {
+	zipQ <- fetcher(entry)
 }
 
-func Zip(urls []DownloadEntry, writeTo io.Writer) error {
-
-	zipQ := make(chan fetchedstream)
-
-	for _, url := range urls {
-		go fetchURL(url, zipQ)
-	}
-	zipWriter := zip.NewWriter(writeTo)
-	for range urls {
-		addToZip(zipWriter, zipQ)
-	}
-	return closeZipWriter(zipWriter)
-
-}
-
-func fetchURL(dlUrl DownloadEntry, zipQ chan fetchedstream) {
-	fmt.Printf("fetching url %s\n", dlUrl.Url)
-	resp, err := http.Get(dlUrl.Url)
-	var fetched fetchedstream
-	if err != nil {
-		fmt.Printf("Error fetching URL..%s", err.Error())
-		fetched.stream, fetched.err, fetched.name = nil, err, ""
-		zipQ <- fetched
-	}
-	fetched.stream, fetched.err, fetched.name = resp.Body, nil, dlUrl.Name
-	zipQ <- fetched
-
-}
-
-func addToZip(zip *zip.Writer, zipQ chan fetchedstream) error {
+//AddToZip create entries in zip
+func AddToZip(zip *zip.Writer, zipQ chan FetchedStream) error {
 	fetched := <-zipQ
-	if fetched.err != nil {
-		return fetched.err
+	if fetched.Err != nil {
+		return fetched.Err
 	}
-	defer fetched.stream.Close()
-	urlEntry, err := zip.Create(fetched.name)
+	defer fetched.Stream.Close()
+	urlEntry, err := zip.Create(fetched.Name)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Adding stream entry to zip %s\n", fetched.name)
-	io.Copy(urlEntry, fetched.stream)
+	fmt.Printf("Adding stream entry to zip %s\n", fetched.Name)
+	io.Copy(urlEntry, fetched.Stream)
 	return nil
 }
 
-func closeZipWriter(zipWriter *zip.Writer) error {
+func CloseZipWriter(zipWriter *zip.Writer) error {
 	err := zipWriter.Close()
 	if err != nil {
 		return err

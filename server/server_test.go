@@ -1,4 +1,4 @@
-package zippy
+package main
 
 import (
 	"bytes"
@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"os"
 	"testing"
+
+	"github.com/monmohan/zippy"
 )
 
 func TestZipCreation(t *testing.T) {
-	urls := []DownloadEntry{{"http://example.com", HTTP, "exmaple.com"},
-		{"https://github.com", HTTP, "github.com"},
-		{"https://www.reddit.com/r/starterpacks/comments/hidqze/affluent_suburbanite_rambo_starterpack/", HTTP, "redditimage"}}
+	urls := []zippy.DownloadEntry{{"http://example.com", zippy.HTTP, "exmaple.com"},
+		{"https://github.com", zippy.HTTP, "github.com"},
+		{"https://www.reddit.com/r/starterpacks/comments/hidqze/affluent_suburbanite_rambo_starterpack/", zippy.HTTP, "redditimage"}}
 	f, err := os.Create("/Users/singhmo/Downloads/test.zip")
 	if err != nil {
 		log.Fatalf("Error in creating zip writer")
@@ -27,9 +29,9 @@ func TestZipCreation(t *testing.T) {
 }
 
 func TestZipCreationViaHttp(t *testing.T) {
-	urls := []DownloadEntry{{"http://example.com", HTTP, "exmaple.com"},
-		{"https://github.com", HTTP, "github.com"},
-		{"https://www.reddit.com/r/starterpacks/comments/hidqze/affluent_suburbanite_rambo_starterpack/", HTTP, "redditimage"}}
+	urls := []zippy.DownloadEntry{{"http://example.com", zippy.HTTP, "exmaple.com"},
+		{"https://github.com", zippy.HTTP, "github.com"},
+		{"https://www.reddit.com/r/starterpacks/comments/hidqze/affluent_suburbanite_rambo_starterpack/", zippy.HTTP, "redditimage"}}
 	dlReq := DownloadAsZipRequest{Entries: urls, ZipName: "TestZipCreationViaHttp.zip"}
 	b, _ := json.Marshal(dlReq)
 	fmt.Printf("Request sending %v \n", string(b))

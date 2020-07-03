@@ -1,14 +1,23 @@
 package main
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/monmohan/zippy"
+	zhttp "github.com/monmohan/zippy/http"
 )
+
+//DownloadAsZipRequest is request body for downloading a set of URLs
+type DownloadAsZipRequest struct {
+	Entries []zippy.DownloadEntry
+	ZipName string
+}
 
 func allowMethods(method string, handler func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +31,7 @@ func allowMethods(method string, handler func(w http.ResponseWriter, r *http.Req
 }
 
 func downloadZip(w http.ResponseWriter, r *http.Request) {
-	var dlUrls zippy.DownloadAsZipRequest
+	var dlUrls DownloadAsZipRequest
 	bytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(400)
@@ -35,9 +44,25 @@ func downloadZip(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Add("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, dlUrls.ZipName))
 	fmt.Printf("request %v\n", dlUrls)
-	if err := zippy.Zip(dlUrls.Entries, w); err != nil {
+	if err := Zip(dlUrls.Entries, w); err != nil {
 		fmt.Printf("There were errors in creating zip %s  Error: %s\n", dlUrls.ZipName, err)
 	}
+}
+
+//Zip zips a set of download URLs and writes to given writer
+func Zip(urls []zippy.DownloadEntry, writeTo io.Writer) error {
+
+	zipQ := make(chan zippy.FetchedStream)
+
+	for _, url := range urls {
+		go zippy.FetchURL(url, zipQ, zhttp.Fetch)
+	}
+	zipWriter := zip.NewWriter(writeTo)
+	for range urls {
+		zippy.AddToZip(zipWriter, zipQ)
+	}
+	return zippy.CloseZipWriter(zipWriter)
+
 }
 
 func main() {
