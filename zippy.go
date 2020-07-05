@@ -39,6 +39,7 @@ func FetchURL(entry DownloadEntry, zipQ chan FetchedStream, fetcher Fetcher) {
 func AddToZip(zip *zip.Writer, zipQ chan FetchedStream) error {
 	fetched := <-zipQ
 	if fetched.Err != nil {
+		fmt.Printf("Error in fetching stream , stream name %s, err %s", fetched.Name, fetched.Err.Error())
 		return fetched.Err
 	}
 	defer fetched.Stream.Close()

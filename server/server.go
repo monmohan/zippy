@@ -2,16 +2,22 @@ package main
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/monmohan/zippy"
 	zhttp "github.com/monmohan/zippy/http"
 	"github.com/monmohan/zippy/s3"
+)
+
+const (
+	timeout = 3 * time.Second
 )
 
 //DownloadAsZipRequest is request body for downloading a set of URLs
@@ -32,6 +38,8 @@ func allowMethods(method string, handler func(w http.ResponseWriter, r *http.Req
 }
 
 func downloadZip(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	var dlUrls DownloadAsZipRequest
 	bytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -45,20 +53,20 @@ func downloadZip(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Add("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, dlUrls.ZipName))
 	fmt.Printf("request %v\n", dlUrls)
-	if err := Zip(dlUrls.Entries, w); err != nil {
+	if err := Zip(ctx, dlUrls.Entries, w); err != nil {
 		fmt.Printf("There were errors in creating zip %s  Error: %s\n", dlUrls.ZipName, err)
 	}
 }
 
 //Zip zips a set of download URLs and writes to given writer
-func Zip(urls []zippy.DownloadEntry, writeTo io.Writer) error {
+func Zip(ctx context.Context, urls []zippy.DownloadEntry, writeTo io.Writer) error {
 
 	zipQ := make(chan zippy.FetchedStream)
 	var fetchFn zippy.Fetcher
 	for _, url := range urls {
-		fetchFn = zhttp.Fetch
+		fetchFn = zhttp.CreateFetcher(ctx)
 		if url.UrlType == zippy.S3 {
-			fetchFn = s3.CreateFetcher()
+			fetchFn = s3.CreateFetcher(ctx)
 		}
 		go zippy.FetchURL(url, zipQ, fetchFn)
 	}

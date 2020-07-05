@@ -2,13 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/monmohan/zippy"
 )
@@ -22,7 +25,8 @@ func TestZipCreation(t *testing.T) {
 		log.Fatalf("Error in creating zip writer")
 
 	}
-	if err := Zip(urls, f); err != nil {
+
+	if err := Zip(context.Background(), urls, f); err != nil {
 		t.Fatalf("error in creating zip %s", err.Error())
 	}
 
@@ -40,6 +44,39 @@ func TestZipCreationViaHttp(t *testing.T) {
 	b, _ := json.Marshal(dlReq)
 	fmt.Printf("Request sending %v \n", string(b))
 	f, err := os.Create("/Users/singhmo/Downloads/testh.zip")
+	if err != nil {
+		log.Fatalf("Error in creating zip writer")
+
+	}
+	resp, err := http.Post("http://127.0.0.1:9999/downloadzip", "application/json", bytes.NewReader(b))
+
+	if err != nil {
+		log.Fatalf("Error in download !! %v", err.Error())
+	}
+	if resp.StatusCode != 200 {
+		log.Fatalf("Error in download !! %v", resp.StatusCode)
+	}
+	io.Copy(f, resp.Body)
+
+}
+
+func TestZipCreationContextTimeout(t *testing.T) {
+	//create a fake test server which responds slowly
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(10 * time.Second)
+		fmt.Fprintln(w, "Hello, client. Sorry I am slow")
+	}))
+	defer ts.Close()
+
+	urls := []zippy.DownloadEntry{
+		{"http://example.com", zippy.HTTP, "exmaple.com"},
+		{"com.github.monmohan.zippy/devnull.jpg", zippy.S3, "devnull.jpg"},
+		{ts.URL, zippy.HTTP, "slow.html"},
+	}
+	dlReq := DownloadAsZipRequest{Entries: urls, ZipName: "TestZipCreationMixed.zip"}
+	b, _ := json.Marshal(dlReq)
+	fmt.Printf("Request sending %v \n", string(b))
+	f, err := os.Create("/tmp/testslow.zip")
 	if err != nil {
 		log.Fatalf("Error in creating zip writer")
 

@@ -12,9 +12,9 @@ import (
 	"github.com/monmohan/zippy"
 )
 
-func CreateFetcher() func(dlEntry zippy.DownloadEntry) zippy.FetchedStream {
+//CreateFetcher creates a fetcher function that can fetch files from S3
+func CreateFetcher(ctx context.Context) zippy.Fetcher {
 	sess := session.Must(session.NewSession())
-	ctx := context.Background()
 	svc := s3.New(sess)
 	return func(dlEntry zippy.DownloadEntry) zippy.FetchedStream {
 		bucketKeySplit := strings.Index(dlEntry.Url, "/")
@@ -26,12 +26,12 @@ func CreateFetcher() func(dlEntry zippy.DownloadEntry) zippy.FetchedStream {
 			Key:    aws.String(dlEntry.Url[bucketKeySplit+1:]),
 		})
 		if err != nil {
-			fmt.Printf("Error %v", err.Error())
+			fmt.Printf("Error %v\n", err.Error())
 			// Cast err to awserr.Error to handle specific error codes.
 			aerr, ok := err.(awserr.Error)
 			if ok && aerr.Code() == s3.ErrCodeNoSuchKey {
 				// Specific error code handling
-				fmt.Printf("Error %v", aerr)
+				fmt.Printf("Error %v\n", aerr)
 			}
 			return zippy.FetchedStream{Stream: nil, Err: err, Name: dlEntry.Name}
 		}
