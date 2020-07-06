@@ -1,5 +1,5 @@
 # zippy
-A server to download data from different sources as zip stream. Currently HTTP and S3 downloads are supported
+A server to download data from different heterogenous sources as a single zip stream. Currently HTTP and S3 downloads are supported
 
 # Run Server
 `$ go run server.go `
